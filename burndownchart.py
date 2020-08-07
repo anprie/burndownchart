@@ -13,31 +13,31 @@ sys.argv[4] : length of sprint in days
 """
 
 if len(sys.argv) < 2:
-    print("Usage:\n\tpython3 <scriptname> <datafile> <graphs> <start> <days>\n")
+    print("Usage:\n\tpython3 <scriptname> <datafile> <graphs> <start> <duration>\n")
     print("\te.g.\t python3 burndownchart3.py Sprint4 3 fr 14\n")
 if len(sys.argv) < 4:
-    sys.argv.extend(["2", "mo", "7"])
+    sys.argv.extend(["2", "mo", "14"])
 
-days = ["mo", "di", "mi", "do", "fr", "sa", "so"] 
-start = days.index(sys.argv[3])
-tail = days[:start]
-sprintweek = days[start:]
+week = ["mo", "di", "mi", "do", "fr", "sa", "so"] 
+start = week.index(sys.argv[3])
+tail = week[:start]
+sprintweek = week[start:]
 sprintweek.extend(tail)
 
-number = int(sys.argv[4])
-if number < 7:
-    sprintweek = sprintweek[:number]
+duration = int(sys.argv[4])
+if duration < 7:
+    sprintweek = sprintweek[:duration]
 
-if number > 7:
-    diff = number-7
+if duration > 7:
+    diff = duration-7
     for i in range(diff):
-        sprintweek.append(days[(start+i)%7] + str(number//7))
+        sprintweek.append(week[(start+i)%7] + str(duration//7))
     print(sprintweek)
-daynumber = [i+1 for i in range(number)]
+daynum= [i+1 for i in range(duration)]
 
-sprintdays = dict(zip(sprintweek, daynumber))
-burnt_minutes = [0]*(number+1)
-burnt_actualminutes = [0]*(number+1)
+sprintdays = dict(zip(sprintweek, daynum))
+burnt_minutes = [0]*(duration+1)
+burnt_actualminutes = [0]*(duration+1)
 sum_minutes = 0
 issues = []
 day_in_minutes = 480
@@ -85,25 +85,25 @@ def burn_minutes(workload_week, burndown_week):
 def minutes2days(burnt_week):
     return [item/day_in_minutes for item in burnt_week]
 
-workload_week = [sum_minutes]* (number+1)
+workload_week = [sum_minutes]* (duration+1)
 burntdown = burn_minutes(workload_week, burnt_minutes)
 burnt_days = minutes2days(burntdown)
 burnt_days_arr = np.array(burnt_days)
 
 tasks_in_days = sum_minutes/day_in_minutes
 
-x = np.arange(0,number+1,1)
+x = np.arange(0,duration+1,1)
 y = np.arange(tasks_in_days)
-plt.plot([0,number], [tasks_in_days, buffer_days], label = 'Ideal Tasks Remaining')
+plt.plot([0,duration], [tasks_in_days, buffer_days], label = 'Ideal Tasks Remaining')
 plt.axis('equal')
 plt.xticks(x)
-if burnt_minutes != [0]*(number+1):
+if burnt_minutes != [0]*(duration+1):
     plt.plot(x, burnt_days_arr, label = "Actual Tasks Remaining", marker='o')
 
 if sys.argv[2] == "3":
-    workload_week = [sum_minutes]*(number+1)
+    workload_week = [sum_minutes]*(duration+1)
     burntdown_actual = burn_minutes(workload_week, burnt_actualminutes)
-    if burnt_actualminutes != [0]*(number+1):
+    if burnt_actualminutes != [0]*(duration+1):
         burnt_days_actual = minutes2days(burntdown_actual)
         burnt_days_actual_arr = np.array(burnt_days_actual)
         plt.plot(x, burnt_days_actual_arr, label = "Actual Time Burnt")
@@ -117,7 +117,7 @@ if sys.argv[2] == "2":
     ax.set_ylim(ymin=0)
 #ax.set_xlim(xmin=0)
 sprintweek.insert(0,"0")
-for i in range(number+1):
+for i in range(duration+1):
     sprintweek[i] = str(i)+ "\n" + sprintweek[i].capitalize().rstrip('01234')
 ax.set_xticklabels(sprintweek)
 ax.spines['left'].set_position('zero')
