@@ -16,26 +16,39 @@ if len(sys.argv) < 2:
     print("Usage:\n\tpython3 <scriptname> <datafile> <graphs> <start> <duration>\n")
     print("\te.g.\t python3 burndownchart3.py Sprint4 3 fr 14\n")
 if len(sys.argv) < 4:
-    sys.argv.extend(["2", "mo", "14"])
+    sys.argv.extend(["2", "mo", "7"])
 
-week = ["mo", "di", "mi", "do", "fr", "sa", "so"] 
-start = week.index(sys.argv[3])
-tail = week[:start]
-sprintweek = week[start:]
-sprintweek.extend(tail)
+def sprintweek(day):
+    week = ["mo", "di", "mi", "do", "fr", "sa", "so"] 
+    start = week.index(day)
+    tail = week[:start]
+    sprintweek = week[start:]
+    sprintweek.extend(tail)
+    return sprintweek
 
+def adjust_sprintlength(duration, sprint, sprintweek):
+    if duration <= 7:
+        sprint= sprintweek[:duration]
+    elif duration > 7:
+        length = len(sprint)
+        diff = duration - length
+        for i in range(diff):
+            if len(sprint) < 7:
+                sprint.append(sprintweek[(length%7 + i%7)%7])
+            else:
+                sprint.append(sprintweek[(length%7 + i%7)%7] + str((length + i)//7 + 1))
+    return sprint
+
+def map_days(sprint, duration):
+    daynum= [i+1 for i in range(duration)]
+    sprintdays = dict(zip(sprint, daynum))
+    return sprintdays
+    
+sprintweek = sprintweek(sys.argv[3])
 duration = int(sys.argv[4])
-if duration < 7:
-    sprintweek = sprintweek[:duration]
+sprint = adjust_sprintlength(duration, [], sprintweek)
+sprintdays = map_days(sprint, duration)
 
-if duration > 7:
-    diff = duration-7
-    for i in range(diff):
-        sprintweek.append(week[(start+i)%7] + str(duration//7))
-    print(sprintweek)
-daynum= [i+1 for i in range(duration)]
-
-sprintdays = dict(zip(sprintweek, daynum))
 burnt_minutes = [0]*(duration+1)
 burnt_actualminutes = [0]*(duration+1)
 sum_minutes = 0
@@ -58,12 +71,30 @@ with open (sys.argv[1]) as f:
         issues.append(issue)
         if issue.startswith("p"):
             buffer_minutes += minutes
-        if actualminutes_str.isalpha():
-            continue
-        burnt_minutes[sprintdays[day]] += minutes
-        actualminutes = int(actualminutes_str)
-        burnt_actualminutes[sprintdays[day]] += actualminutes
+        if day in sprintdays:
+            burnt_minutes[sprintdays[day]] += minutes
+        elif day.startswith(("mo","di","mi","do","fr","sa","so")) and (duration<7 or day[2:].isdigit()):
+            alpha = day[:2]
+            stop = sprintweek.index(alpha)
+            if duration < 7 and len(day) == 2:
+                extend_by = stop+1 - len(sprint)
+            else:
+                num = int(day[2:])
+                extend_by = stop+1 - len(sprint) + 7*(num-1)
+            duration += extend_by
+            sprint = adjust_sprintlength(duration, sprint, sprintweek)
+            burnt_minutes.extend([0]*extend_by)
+            burnt_actualminutes.extend([0]*extend_by)
+            sprintdays = map_days(sprint, duration)
+            burnt_minutes[sprintdays[day]] += minutes
 
+        if columns == 3:
+            continue
+        if actualminutes_str.isdigit():
+            actualminutes = int(actualminutes_str)
+            burnt_actualminutes[sprintdays[day]] += actualminutes
+
+print("sprint = ", sprint)
 unique_issues = list(set(issues))
 print("number of issues = ", len(issues), "number of unique issues = ", len(unique_issues))
 if len(issues) != len(unique_issues):
@@ -115,11 +146,11 @@ if buffer_minutes != 0:
 ax = plt.subplot(1,1,1)
 if sys.argv[2] == "2":
     ax.set_ylim(ymin=0)
-#ax.set_xlim(xmin=0)
-sprintweek.insert(0,"0")
+ax.set_xlim(xmin=0)
+sprint.insert(0,"0")
 for i in range(duration+1):
-    sprintweek[i] = str(i)+ "\n" + sprintweek[i].capitalize().rstrip('01234')
-ax.set_xticklabels(sprintweek)
+    sprint[i] = str(i)+ "\n" + sprint[i].capitalize().rstrip('01234')
+ax.set_xticklabels(sprint)
 ax.spines['left'].set_position('zero')
 ax.spines['bottom'].set_position('zero')
 ax.spines['right'].set_visible(False)
@@ -131,7 +162,5 @@ plt.ylabel('Tasks (in days)\n' + str(np.round(sum_minutes/60,2)) + 'h = '+ str(n
 filename = sys.argv[1].partition(".")
 plt.title('Burndown Chart ' + filename[0])
 plt.legend()
-#ax.set_ylim(bottom=0)
-#plt.ylim(ymin=0)
 plt.tight_layout()
 plt.show()
