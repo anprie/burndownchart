@@ -3,6 +3,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import sys
+import argparse
 
 """
 sys.argv[0] : scriptname
@@ -11,6 +12,15 @@ sys.argv[2] : number of graphs to plot (2 or 3)
 sys.argv[3] : first day of sprint (mo, di, mi, do, fr, sa, so)
 sys.argv[4] : length of sprint in days
 """
+
+parser = argparse.ArgumentParser(description= "Burndownchart that optionally shows how much time actually went into the tasks of the sprint")
+
+parser.add_argument("data", help="Data file with issue number, planned time, day of completion, and - optionally - actually used time")
+parser.add_argument("graphs", type=int, help="Number of graphs to plot: either two (ideal and actual) or three (actual time)")
+parser.add_argument("firstdayofsprint", help="either mo, di, mi, do, fr, sa, or so")
+parser.add_argument("duration", help="Duration of sprint in days", type=int)
+args = parser.parse_args()
+
 
 if len(sys.argv) < 2:
     print("Usage:\n\tpython3 <scriptname> <datafile> <graphs> <start> <duration>\n")
@@ -44,8 +54,10 @@ def map_days(sprint, duration):
     sprintdays = dict(zip(sprint, daynum))
     return sprintdays
     
-sprintweek = sprintweek(sys.argv[3])
-duration = int(sys.argv[4])
+#sprintweek = sprintweek(sys.argv[3])
+sprintweek = sprintweek(args.firstdayofsprint)
+#duration = int(sys.argv[4])
+duration = int(args.duration)
 sprint = adjust_sprintlength(duration, [], sprintweek)
 sprintdays = map_days(sprint, duration)
 
@@ -57,7 +69,8 @@ day_in_minutes = 480
 actualminutes = 0
 buffer_minutes = 0
 
-with open (sys.argv[1]) as f:
+#with open (sys.argv[1]) as f:
+with open (args.data) as f:
     firstline = f.readline().split()
     columns = len(firstline)
     f.seek(0)
@@ -138,6 +151,9 @@ if sys.argv[2] == "3":
         burnt_days_actual = minutes2days(burntdown_actual)
         burnt_days_actual_arr = np.array(burnt_days_actual)
         plt.plot(x, burnt_days_actual_arr, label = "Actual Time Burnt")
+        if burntdown_actual[-1] >= 0:
+            ax = plt.subplot(1,1,1)
+            ax.set_ylim(ymin=0)
 
 if buffer_minutes != 0:
     plt.axhline(y=buffer_days, color='gray', label = "Buffer Time Issues")
